@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>길이 계산기</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#EEF1EF; --surface:#FFFFFF; --ink:#1C2724; --muted:#5E6B67; --line:#CBD3D0;
+  --mat:#2E5A4E; --matgrid:rgba(255,255,255,.07); --steel:#8FA3B0; --steelDark:#5F7480;
+  --chalk:#F2E08A; --focus:#C9A227; --sel:#2E5A4E; --selink:#FFFFFF; --warn:#B3412E; --chip:#E3E9E6;
+  color-scheme:light; box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#141A19; --surface:#1D2523; --ink:#E6ECEA; --muted:#9AA8A4; --line:#33403D;
+    --mat:#1E3D35; --matgrid:rgba(255,255,255,.05); --steel:#7E95A3; --steelDark:#566C78;
+    --sel:#3B7364; --selink:#FFFFFF; --warn:#E89A88; --chip:#26302E; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#141A19; --surface:#1D2523; --ink:#E6ECEA; --muted:#9AA8A4; --line:#33403D;
+  --mat:#1E3D35; --matgrid:rgba(255,255,255,.05); --steel:#7E95A3; --steelDark:#566C78;
+  --sel:#3B7364; --selink:#FFFFFF; --warn:#E89A88; --chip:#26302E; color-scheme:dark;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"IBM Plex Sans KR",system-ui,-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;font-size:16px;line-height:1.55;font-variant-numeric:tabular-nums}
+.wrap{max-width:1080px;margin:0 auto;padding:28px 20px 48px}
+h1{font-size:1.75rem;font-weight:700;margin:0 0 4px;letter-spacing:-.01em}
+h2{font-size:1.15rem;margin:0 0 12px}
+h3{font-size:.95rem;margin:16px 0 8px}
+.lede{color:var(--muted);margin:0 0 24px;max-width:62ch}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px;margin-top:18px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px 16px}
+label{display:block;font-size:.85rem;color:var(--muted);margin-bottom:4px}
+.field{display:flex;align-items:center;border:1px solid var(--line);border-radius:6px;background:var(--bg)}
+.field input,.field select{flex:1;min-width:0;border:0;background:transparent;color:var(--ink);font:inherit;padding:8px 10px}
+.field span{padding:0 10px;color:var(--muted);font-size:.85rem;white-space:nowrap}
+.field:focus-within{outline:2px solid var(--focus);outline-offset:1px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.chip{font:inherit;font-size:.82rem;background:var(--chip);color:var(--ink);border:1px solid var(--line);border-radius:999px;padding:4px 11px;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--sel);color:var(--selink);border-color:var(--sel)}
+.chip:focus-visible,.btn:focus-visible,.link:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.btn{font:inherit;font-size:.9rem;font-weight:500;background:var(--sel);color:var(--selink);border:0;border-radius:6px;padding:8px 14px;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.link{font:inherit;font-size:.82rem;color:var(--muted);background:none;border:0;padding:0;text-decoration:underline;cursor:pointer}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-top:12px}
+.hint{color:var(--muted);font-size:.85rem;margin:6px 0 0}
+.warn{color:var(--warn);font-size:.88rem;margin:8px 0 0}
+.tablewrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%}
+th,td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap;font-size:.9rem}
+th{color:var(--muted);font-weight:500}
+th:first-child,td:first-child{text-align:left}
+td input,td select{font:inherit;font-size:.9rem;width:100%;min-width:60px;border:1px solid var(--line);border-radius:5px;background:var(--bg);color:var(--ink);padding:5px 7px;text-align:right}
+td input.name{text-align:left;min-width:110px}
+td select{text-align:left;min-width:120px}
+.x{font:inherit;background:none;border:0;color:var(--muted);cursor:pointer;font-size:1rem;padding:2px 6px}
+.preview{margin-top:14px;border:1px dashed var(--line);border-radius:8px;background:var(--bg);padding:12px;display:flex;justify-content:center;align-items:center}
+.preview svg{max-width:100%;height:auto;max-height:260px}
+.stage{background:var(--mat);border-radius:10px;padding:18px;margin-top:18px;color:#fff;
+  background-image:linear-gradient(var(--matgrid) 1px,transparent 1px),linear-gradient(90deg,var(--matgrid) 1px,transparent 1px);background-size:24px 24px}
+.stage h2{color:#fff}
+.spec{margin-top:16px}
+.spec:first-of-type{margin-top:4px}
+.spechead{display:flex;flex-wrap:wrap;gap:4px 18px;align-items:baseline}
+.spechead .big{font-size:1.9rem;font-weight:700;color:var(--chalk);line-height:1}
+.spechead .stat{color:rgba(255,255,255,.85);font-size:.92rem}
+.spechead b{color:#fff;font-weight:500}
+.bars{overflow-x:auto;margin-top:8px}
+.bars svg{display:block}
+.empty{color:rgba(255,255,255,.75);margin:0}
+.sum td{font-size:.95rem}
+.sum tr.total td{font-weight:700;color:#1565C0}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .sum tr.total td{color:#7DB8FF}}
+:root[data-theme="dark"] .sum tr.total td{color:#7DB8FF}
+.two{display:grid;grid-template-columns:1fr;gap:18px}
+@media (min-width:820px){.two{grid-template-columns:1fr 1fr}}
+.libedit{display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr;gap:10px;margin-top:12px}
+@media (max-width:640px){.libedit{grid-template-columns:1fr 1fr}}
+.libedit>div,.grid>div{min-width:0}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.seg button{font:inherit;font-size:.88rem;background:var(--bg);color:var(--ink);border:0;padding:7px 12px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--sel);color:var(--selink)}
+.hide{display:none!important}
+.grid3{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:10px}
+.grp{display:grid;grid-template-columns:1.4fr 1fr 1fr 2.2rem;gap:10px;align-items:end;margin-top:8px}
+.grp>div{min-width:0}
+.grp .x{height:38px}
+.grp .gnote{grid-column:1/-1;margin:0;color:var(--muted);font-size:.8rem}
+.grid3>div{min-width:0}
+.btn:disabled{opacity:.45;cursor:default}
+#confirmDlg{border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);padding:22px 24px 16px;min-width:280px;max-width:90vw}
+#confirmDlg::backdrop{background:rgba(0,0,0,.4)}
+#confirmMsg{margin:0;font-size:1.05rem;font-weight:500}
+.dlgsub{margin:6px 0 0;color:var(--muted);font-size:.88rem}
+.dlgbtns{display:flex;justify-content:flex-end;gap:8px;margin-top:20px}
+.dlginput{margin-top:14px;min-width:260px}
+.dlgerr{margin:6px 0 0;color:var(--warn);font-size:.85rem;min-height:1em}
+.dlgbtns button{font:inherit;font-weight:500;background:transparent;border:1px solid var(--line);border-radius:6px;padding:7px 18px;cursor:pointer}
+.dlgdel{color:#C62828}
+.dlgcancel{color:#000}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .dlgdel{color:#FF7070}:root:not([data-theme="light"]) .dlgcancel{color:var(--ink)}}
+:root[data-theme="dark"] .dlgdel{color:#FF7070}:root[data-theme="dark"] .dlgcancel{color:var(--ink)}
+.dlgbtns button:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.cpair{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden}
+.cpair .chip{border:0;border-radius:0}
+.cpair .cedit{font:inherit;font-size:.75rem;background:var(--bg);color:var(--muted);border:0;border-left:1px solid var(--line);padding:4px 9px;cursor:pointer}
+.cpair.on{border-color:var(--sel)}.cpair.on .chip{background:var(--sel);color:var(--selink)}
+.cedit:focus-visible{outline:2px solid var(--focus);outline-offset:-2px}
+.matedit{display:grid;grid-template-columns:2fr 2fr 1fr;gap:10px;margin-top:12px}
+.matedit>div{min-width:0}
+@media (max-width:640px){.matedit{grid-template-columns:1fr 1fr}}
+.facet td input{max-width:110px}
+.facet td,.facet th{text-align:left}
+#printView{display:none}
+@media print{
+  :root,:root[data-theme="dark"]{--bg:#fff;--surface:#fff;--ink:#000;--muted:#444;--line:#999;--steel:#bbb;--steelDark:#888;color-scheme:light}
+  body{background:#fff;color:#000;font-size:11pt}
+  .wrap{display:none!important}
+  #printView{display:block}
+  #printView h1{font-size:18pt;margin:0 0 2mm}
+  #printView h2{font-size:12.5pt;margin:6mm 0 2mm;border-bottom:1px solid #000;padding-bottom:1mm}
+  #printView table{border-collapse:collapse;width:100%;margin-bottom:2mm}
+  #printView th,#printView td{border:1px solid #888;padding:1.2mm 2mm;font-size:10pt;text-align:left;white-space:normal}
+  #printView td.n,#printView th.n{text-align:right}
+  #printView .meta{color:#333;font-size:10pt;margin:0}
+  #printView .pv{max-width:80mm;margin:2mm 0}
+  #printView .pv svg{width:100%;height:auto}
+  #printView .cut{margin:1.5mm 0 3mm;break-inside:avoid}
+  #printView .cut svg{width:100%;height:auto}
+  #printView section{break-inside:avoid}
+  @page{margin:12mm}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>길이 계산기</h1>
+  <p class="lede">제작물에 들어가는 파이프를 규격별로 몇 본 사야 하는지, 어떻게 자르고 얼마가 남는지, 비용은 얼마인지 한 번에 계산합니다.</p>
+
+  <section class="card">
+    <h2>현재 작업</h2>
+    <p class="hint">저장된 작업을 고르면 바로 불러옵니다. '저장'은 지금 고른 작업에 덮어쓰고, '다른 이름으로 저장'은 이름을 물어본 뒤 새 작업으로 만듭니다. '(새 작업)' 상태에서 '저장'을 눌러도 이름을 물어봅니다.</p>
+    <div class="grid">
+      <div><label for="jobList">저장된 작업</label><div class="field"><select id="jobList"></select></div></div>
+    </div>
+    <div class="row">
+      <button type="button" class="btn" id="jSave">저장</button>
+      <button type="button" class="btn ghost" id="jSaveAs">다른 이름으로 저장</button>
+      <button type="button" class="btn ghost" id="jDel">삭제</button>
+      <span class="hint" id="jMsg"></span>
+    </div>
+    <div class="row">
+      <button type="button" class="btn" id="printBtn">작업지시서 인쇄</button>
+      <label style="display:flex;align-items:center;gap:6px;margin:0;color:var(--ink)"><input type="checkbox" id="printPrice"> 가격 포함</label>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>내 규격 목록</h2>
+    <p class="hint">자주 쓰는 파이프 규격과 단가를 저장해 두면 아래에서 버튼 한 번으로 고를 수 있습니다. 이 브라우저에만 저장되고 다른 사람에게는 보이지 않습니다.</p>
+    <div class="chips" id="specChips"></div>
+    <div class="libedit">
+      <div><label for="sName">규격 이름</label><div class="field"><input id="sName" placeholder="예: 50×100×2.3t"></div></div>
+      <div><label for="sW">가로</label><div class="field"><input id="sW" type="number" inputmode="decimal" min="0" step="any"><span>mm</span></div></div>
+      <div><label for="sH">세로</label><div class="field"><input id="sH" type="number" inputmode="decimal" min="0" step="any"><span>mm</span></div></div>
+      <div><label for="sLen">한 본 길이</label><div class="field"><input id="sLen" type="number" inputmode="decimal" min="0" step="any"><span>mm</span></div></div>
+      <div><label for="sPrice">본당 단가</label><div class="field"><input id="sPrice" type="number" inputmode="decimal" min="0" step="any"><span>원</span></div></div>
+    </div>
+    <div class="row">
+      <button type="button" class="btn" id="sSave">저장</button>
+      <button type="button" class="btn ghost" id="sNew">새 규격</button>
+      <button type="button" class="btn ghost" id="sDel">삭제</button>
+      <span class="hint" id="sMsg"></span>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>제작물 템플릿</h2>
+    <div class="grid"><div><label for="tSel">템플릿</label><div class="field"><select id="tSel"><option value="frame">사각 프레임 (간판 등)</option><option value="box">입체 프레임 (구조물)</option></select></div></div></div>
+    <p class="hint">자주 만드는 형태는 치수만 넣으면 파이프 절단 목록이 자동으로 만들어집니다. 다른 형태는 아래 절단 목록에 직접 넣으면 됩니다.</p>
+    <div class="two">
+      <div>
+        <div id="tplFrame">
+          <div class="grid">
+            <div><label for="fW">가로 (바깥 치수)</label><div class="field"><input id="fW" type="number" inputmode="decimal" min="0" step="any" value="3000"><span>mm</span></div></div>
+            <div><label for="fH">세로 (바깥 치수)</label><div class="field"><input id="fH" type="number" inputmode="decimal" min="0" step="any" value="1000"><span>mm</span></div></div>
+          </div>
+        </div>
+        <div id="tplBox" class="hide">
+          <div class="grid">
+            <div><label for="bW">가로</label><div class="field"><input id="bW" type="number" inputmode="decimal" min="0" step="any" value="1200"><span>mm</span></div></div>
+            <div><label for="bD">깊이</label><div class="field"><input id="bD" type="number" inputmode="decimal" min="0" step="any" value="800"><span>mm</span></div></div>
+            <div><label for="bH">높이</label><div class="field"><input id="bH" type="number" inputmode="decimal" min="0" step="any" value="900"><span>mm</span></div></div>
+          </div>
+          <p class="hint">바깥 치수 기준입니다. 기둥 4개는 높이 그대로, 위·아래 가로대와 보강대는 기둥이나 테두리 사이에 맞대어 넣는 방식으로 계산합니다.</p>
+        </div>
+        <h3>테두리·기둥 규격</h3>
+        <div class="field"><select id="fSpec"></select></div>
+        <div class="chips" id="fSpecChips"></div>
+        <div id="fOrientBox"><h3>정면에서 보이는 파이프 폭</h3>
+        <div class="seg" id="fOrient"><button type="button" data-v="w" aria-pressed="true">가로</button><button type="button" data-v="h" aria-pressed="false">세로</button></div>
+        <p class="hint">직사각 파이프는 어느 면이 정면을 향하느냐에 따라 안쪽으로 빠지는 길이가 달라집니다.</p></div>
+        <div id="frameOnly">
+          <h3>모서리 접합</h3>
+          <div class="seg" id="fJoint"><button type="button" data-v="butt" aria-pressed="true">맞대기</button><button type="button" data-v="miter" aria-pressed="false">45° 연귀</button></div>
+          <h3>세로 뼈대</h3>
+          <div class="groups" id="vGroups"></div>
+          <div class="row" style="margin-top:6px"><button type="button" class="btn ghost" id="vAddGrp">+ 규격 추가</button></div>
+          <p class="hint" id="vInfo"></p>
+          <h3>가로 뼈대</h3>
+          <div class="groups" id="hGroups"></div>
+          <div class="row" style="margin-top:6px"><button type="button" class="btn ghost" id="hAddGrp">+ 규격 추가</button></div>
+          <p class="hint" id="hInfo"></p>
+          <div id="crossBox"><h3>세로·가로 뼈대가 만날 때</h3>
+          <div class="seg" id="fCross"><button type="button" data-v="v" aria-pressed="true">세로 뼈대를 통으로</button><button type="button" data-v="h" aria-pressed="false">가로 뼈대를 통으로</button></div>
+          <p class="hint">통으로 가지 않는 쪽 뼈대가 그 사이마다 나뉘어 잘립니다.</p></div>
+          <p class="hint">개수를 0으로 두면 그 방향 뼈대는 없습니다. 최대 간격을 바꾸면 개수가 자동으로 계산되고, 개수를 직접 고치면 그 값을 그대로 씁니다.</p>
+        </div>
+        <div id="boxOnly" class="hide">
+          <h3>면별 보강대 개수</h3>
+          <div class="tablewrap"><table class="facet"><thead><tr><th>면</th><th>가로 보강</th><th>세로 보강 <span class="hint">(윗면·바닥은 깊이 방향)</span></th></tr></thead><tbody><tr><td>앞면</td><td><input id="bFh" type="number" inputmode="numeric" min="0" step="1" value="0" aria-label="앞면 가로 보강"></td><td><input id="bFv" type="number" inputmode="numeric" min="0" step="1" value="0" aria-label="앞면 세로 보강"></td></tr><tr><td>뒷면</td><td><input id="bBh" type="number" inputmode="numeric" min="0" step="1" value="0" aria-label="뒷면 가로 보강"></td><td><input id="bBv" type="number" inputmode="numeric" min="0" step="1" value="0" aria-label="뒷면 세로 보강"></td></tr><tr><td>왼쪽면</td><td><input id="bLh" type="number" inputmode="numeric" min="0" step="1" value="0" aria-label="왼쪽면 가로 보강"></td><td><input id="bLv" type="number" inputmode="numeric" min="0" step="1" value="0" aria-label="왼쪽면 세로 보강"></td></tr><tr><td>오른쪽면</td><td><input id="bRh" type="number" inputmode="numeric" min="0" step="1" value="0" aria-label="오른쪽면 가로 보강"></td><td><input id="bRv" type="number" inputmode="numeric" min="0" step="1" value="0" aria-label="오른쪽면 세로 보강"></td></tr><tr><td>윗면</td><td><input id="bTh" type="number" inputmode="numeric" min="0" step="1" value="0" aria-label="윗면 가로 보강"></td><td><input id="bTv" type="number" inputmode="numeric" min="0" step="1" value="0" aria-label="윗면 깊이 보강"></td></tr><tr><td>바닥</td><td><input id="bDh" type="number" inputmode="numeric" min="0" step="1" value="0" aria-label="바닥 가로 보강"></td><td><input id="bDv" type="number" inputmode="numeric" min="0" step="1" value="1" aria-label="바닥 깊이 보강"></td></tr></tbody></table></div>
+          <div class="row"><button type="button" class="btn ghost" id="bFill">최대 간격으로 채우기</button><span class="hint">아래 최대 간격 기준으로 모든 칸을 한 번에 채웁니다. 필요 없는 칸은 0으로 바꾸세요.</span></div>
+          <p class="hint">한 면에 가로와 세로를 같이 넣으면 가로 보강은 통으로 들어가고, 세로(깊이) 보강이 그 사이마다 나뉘어 잘립니다.</p>
+        </div>
+        <div class="grid" style="margin-top:12px" id="boxCommon">
+          <div><label for="fMax">보강 최대 간격</label><div class="field"><input id="fMax" type="number" inputmode="decimal" min="1" step="any" value="600"><span>mm</span></div></div>
+          <div><label for="fSSpec">보강 규격</label><div class="field"><select id="fSSpec"></select></div></div>
+        </div>
+        <p class="hint">개수 = ⌈안쪽 길이 ÷ 최대 간격⌉ − 1로 정하고 균등하게 놓습니다. 빈 간격은 파이프 사이의 비어 있는 거리입니다. 자재 산출용이며 구조 안전을 보증하지 않습니다.</p>
+        <div class="row"><label style="display:flex;align-items:center;gap:6px;margin:0;color:var(--ink);font-size:.95rem"><input type="checkbox" id="tLink" checked> 절단 목록과 연결</label><span class="hint" id="fInfo"></span></div>
+        <p class="hint">연결되어 있으면 템플릿 치수를 바꾸는 즉시 절단 목록이 바뀝니다. 템플릿 조각의 길이·수량을 직접 고치려면 연결을 끄세요. 조각은 그대로 남고 일반 조각이 됩니다.</p>
+      </div>
+      <div class="preview" id="fPreview"></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>파이프 절단 목록 <span class="hint" style="font-weight:400">(제작물 1개 기준)</span></h2>
+    <p class="hint">파이프를 잘라서 만드는 조각만 넣습니다. 캐스터·볼트 같은 완제품 부품은 아래 '부자재'에 넣으세요.</p>
+    <div class="tablewrap"><table id="partTable"><thead><tr><th>이름</th><th>파이프 규격</th><th>길이 (mm)</th><th>수량</th><th>타공 (조각당)</th><th>벤딩 (조각당)</th><th></th></tr></thead><tbody></tbody></table></div>
+    <div class="row">
+      <button type="button" class="btn ghost" id="pAdd">+ 직접 추가</button>
+      <button type="button" class="link" id="pClear">목록 비우기</button>
+    </div>
+    <div class="grid" style="margin-top:16px">
+      <div><label for="jQty">제작 개수</label><div class="field"><input id="jQty" type="number" inputmode="numeric" min="1" step="1" value="1"><span>개</span></div></div>
+      <div><label for="jKerf">톱날 두께</label><div class="field"><input id="jKerf" type="number" inputmode="decimal" min="0" step="any" value="2"><span>mm</span></div></div>
+      <div><label for="jReuse">재사용 자투리 기준</label><div class="field"><input id="jReuse" type="number" inputmode="decimal" min="0" step="any" value="300"><span>mm 이상</span></div></div>
+    </div>
+  </section>
+
+  <section class="stage" aria-live="polite">
+    <h2>절단 계획</h2>
+    <div id="plan"></div>
+  </section>
+
+  <section class="card">
+    <h2>부자재</h2>
+    <p class="hint">캐스터, 카라비너, 아이볼트처럼 사서 붙이는 부품입니다. 규격은 자유롭게 적으세요.</p>
+    <h3>내 부자재 목록</h3>
+    <p class="hint">버튼을 누르면 아래 칸에 불러와지고 '이번 작업 부자재'에도 들어갑니다. 불러온 상태에서 내용을 바꾸면 버튼이 '수정'으로 바뀌고, 누르면 이번 작업에 들어 있는 같은 품목도 함께 바뀝니다. 아무것도 선택하지 않고 새로 적으면 '등록'이 됩니다.</p>
+    <div class="chips" id="matChips"></div>
+    <div class="matedit">
+      <div><label for="mName">품목</label><div class="field"><input id="mName" placeholder="예: 이동식 캐스터"></div></div>
+      <div><label for="mSpec">규격</label><div class="field"><input id="mSpec" placeholder="예: 75mm 우레탄"></div></div>
+      <div><label for="mPrice">단가</label><div class="field"><input id="mPrice" type="number" inputmode="decimal" min="0" step="any"><span>원</span></div></div>
+    </div>
+    <div class="row">
+      <button type="button" class="btn" id="mLibSave" disabled>등록</button>
+      <button type="button" class="link" id="mLibClear">입력칸 비우기</button>
+      <span class="hint" id="mMsg"></span>
+    </div>
+    <h3>이번 작업 부자재</h3>
+    <div class="tablewrap"><table id="matTable"><thead><tr><th>품목</th><th>규격</th><th>수량 (제작물 1개)</th><th>단가 (원)</th><th>금액</th><th></th></tr></thead><tbody></tbody></table></div>
+    <div class="row"><button type="button" class="btn ghost" id="mAdd">+ 목록에 없는 부자재 직접 추가</button></div>
+  </section>
+
+  <section class="card">
+    <h2>추가 비용</h2>
+    <div class="grid">
+      <div><label for="cHole">타공 단가</label><div class="field"><input id="cHole" type="number" inputmode="decimal" min="0" step="any" value="0"><span>원/개</span></div></div>
+      <div><label for="cBend">벤딩 단가</label><div class="field"><input id="cBend" type="number" inputmode="decimal" min="0" step="any" value="0"><span>원/개소</span></div></div>
+      <div><label for="cWeld">용접 단가</label><div class="field"><input id="cWeld" type="number" inputmode="decimal" min="0" step="any" value="0"><span>원/개소</span></div></div>
+      <div><label for="cWeldX">추가 용접 개소 (제작물 1개)</label><div class="field"><input id="cWeldX" type="number" inputmode="numeric" min="0" step="1" value="0"><span>곳</span></div></div>
+      <div><label for="cFixed">고정비 (작업 1회)</label><div class="field"><input id="cFixed" type="number" inputmode="decimal" min="0" step="any" value="0"><span>원</span></div></div>
+      <div><label for="cMode">이익 계산 방식</label><div class="field"><select id="cMode"><option value="margin">마진율 (판매가 기준)</option><option value="markup">마크업 (원가 기준)</option></select></div></div>
+      <div><label for="cMargin" id="cMarginL">목표 마진율</label><div class="field"><input id="cMargin" type="number" inputmode="decimal" min="0" step="any" value="0"><span>%</span></div></div>
+    </div>
+    <p class="hint">단가는 입력하면 자동으로 기억돼서 다음에 열 때 그대로 남아 있습니다. 타공·벤딩 개수는 절단 목록에서 가져옵니다. 용접 개소는 템플릿에서 자동으로 세고, 직접 넣은 조각 등의 용접은 '추가 용접 개소'에 더하세요.</p>
+  </section>
+
+  <section class="card">
+    <h2>합계</h2>
+    <div class="tablewrap"><table class="sum" id="sumTable"></table></div>
+  </section>
+
+  <section class="card">
+    <h2>내 목록 백업</h2>
+    <p class="hint">규격·부자재 목록, 단가, 저장한 작업은 이 브라우저에만 저장됩니다. 브라우저 데이터를 지우거나 다른 기기에서 쓰려면 파일로 내보내 두세요. 블로그 안에 끼워진 화면과 계산기 주소로 직접 연 화면은 브라우저가 저장 공간을 따로 나눌 수 있습니다.</p>
+    <div class="row">
+      <button type="button" class="btn ghost" id="exp">파일로 내보내기</button>
+      <label class="btn ghost" style="margin:0">파일에서 불러오기<input type="file" id="imp" accept=".json,application/json" class="hide"></label>
+      <span class="hint" id="bMsg"></span>
+    </div>
+  </section>
+</div>
+<div id="printView"></div>
+<dialog id="confirmDlg" aria-labelledby="confirmMsg">
+  <p id="confirmMsg">정말 삭제하시겠습니까?</p>
+  <p class="dlgsub" id="confirmSub"></p>
+  <div class="field dlginput hide" id="dlgInputBox"><input id="dlgInput" placeholder="예: 안전화 털이개 1200형" aria-label="작업 이름"></div>
+  <p class="dlgerr" id="dlgErr"></p>
+  <div class="dlgbtns"><button type="button" class="dlgdel" id="dlgOk">삭제</button><button type="button" class="dlgcancel" id="dlgCancel">취소</button></div>
+</dialog>
+
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+const fmt=(n,d=0)=>Number(n).toLocaleString("ko-KR",{maximumFractionDigits:d,minimumFractionDigits:d});
+const num=(id,def=0)=>{const v=parseFloat($(id).value);return isFinite(v)?v:def;};
+const fmt1=n=>Number(n).toLocaleString("ko-KR",{maximumFractionDigits:1});
+const uid=()=>Math.random().toString(36).slice(2,9);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const LIBKEY="pipe-calc-lib-v1",JOBKEY="pipe-calc-job-v1";
+const PALETTE=["#F2E08A","#9FE3C6","#F5B3A0","#B7C8F5","#E6B8F0","#F7D59C","#C9E89B","#9AD6F0"];
+
+/* ---------- state ---------- */
+let lib={specs:[
+  {id:"s20",name:"20×20",w:20,h:20,len:6000,price:0},{id:"s30",name:"30×30",w:30,h:30,len:6000,price:0},
+  {id:"s40",name:"40×40",w:40,h:40,len:6000,price:0},{id:"s50",name:"50×50",w:50,h:50,len:6000,price:0},
+  {id:"s50x100",name:"50×100",w:50,h:100,len:6000,price:0}],
+  mats:[]};
+let job={rows:[],mats:[],editSpec:null,editMat:null};
+try{const l=JSON.parse(localStorage.getItem(LIBKEY)||"null");if(l&&Array.isArray(l.specs))lib=l;}catch(e){}
+function migrate(){lib.specs.forEach(s=>{if(s.w==null){s.w=s.a||0;s.h=s.a||0;}delete s.a;});lib.mats=(lib.mats||[]).map(m=>Object.assign({spec:""},m));}
+migrate();
+try{const j=JSON.parse(localStorage.getItem(JOBKEY)||"null");if(j&&Array.isArray(j.rows))job=Object.assign(job,j);}catch(e){}
+const saveLib=()=>{try{localStorage.setItem(LIBKEY,JSON.stringify(lib));}catch(e){}};
+const VAL_IDS=["tSel","fW","fH","bW","bD","bH","bFh","bFv","bBh","bBv","bLh","bLv","bRh","bRv","bTh","bTv","bDh","bDv","fMax","jQty","jKerf","jReuse","cHole","cBend","cWeld","cWeldX","cFixed","cMode","cMargin"];
+const SEG_IDS=["fJoint","fCross","fOrient"];
+let vG=[{spec:"s40",max:600,cnt:4,auto:true}],hG=[{spec:"s40",max:600,cnt:0,auto:false}];
+const extraGet=()=>({vG:JSON.parse(JSON.stringify(vG)),hG:JSON.parse(JSON.stringify(hG))});
+function extraSet(v){
+  const conv=k=>({spec:v[k+"Spec"]||v.fSSpec||v.fSpec,max:parseFloat(v[k+"Max"]||v.fMax)||600,cnt:parseFloat(v[k+"Cnt"])||0,auto:v[k+"Auto"]==="1"});
+  if(Array.isArray(v.vG)&&v.vG.length){vG=JSON.parse(JSON.stringify(v.vG));hG=JSON.parse(JSON.stringify(v.hG&&v.hG.length?v.hG:[{spec:vG[0].spec,max:600,cnt:0,auto:false}]));}
+  else if(v.vAuto!==undefined){vG=[conv("v")];hG=[conv("h")];}
+  else if(v.fDir){const on=d=>v.fDir===d||v.fDir==="both",sp=v.fSSpec||v.fSpec,mx=parseFloat(v.fMax)||600;
+    vG=[{spec:sp,max:mx,cnt:0,auto:on("v")}];hG=[{spec:sp,max:mx,cnt:0,auto:on("h")}];}
+  renderLib();
+}
+function renderGroups(k){
+  const G=k==="v"?vG:hG,box=$(k+"Groups");
+  box.innerHTML=G.map((g,i)=>`<div class="grp" data-i="${i}">
+    <div>${i===0?`<label>규격</label>`:""}<div class="field"><select data-f="spec" aria-label="${i+1}번째 규격">${specOptions(g.spec)}</select></div></div>
+    <div>${i===0?`<label>최대 간격</label>`:""}<div class="field"><input data-f="max" type="number" inputmode="decimal" min="1" step="any" value="${g.max}" aria-label="최대 간격"><span>mm</span></div></div>
+    <div>${i===0?`<label>개수</label>`:""}<div class="field"><input data-f="cnt" type="number" inputmode="numeric" min="0" step="1" value="${g.cnt}" aria-label="개수"><span>개</span></div></div>
+    <div>${i>0?`<button type="button" class="x" data-del="1" aria-label="${i+1}번째 규격 삭제">✕</button>`:""}</div>
+    <p class="gnote" data-note="1"></p></div>`).join("");
+}
+["v","h"].forEach(k=>{
+  const box=$(k+"Groups"),G=()=>k==="v"?vG:hG;
+  const onEdit=e=>{const row=e.target.closest(".grp"),f=e.target.dataset.f;if(!row||!f)return;const g=G()[+row.dataset.i];
+    if(f==="spec")g.spec=e.target.value;else if(f==="max"){g.max=parseFloat(e.target.value)||0;g.auto=true;}else{g.cnt=Math.max(0,Math.round(parseFloat(e.target.value)||0));g.auto=false;}
+    if(f==="spec")renderLib();update();};
+  box.addEventListener("input",e=>{if(e.target.tagName!=="SELECT")onEdit(e);});
+  box.addEventListener("change",e=>{if(e.target.tagName==="SELECT")onEdit(e);});
+  box.addEventListener("click",e=>{if(!e.target.dataset.del)return;const row=e.target.closest(".grp");G().splice(+row.dataset.i,1);renderGroups(k);update();});
+  $(k+"AddGrp").addEventListener("click",()=>{const arr=G();arr.push({spec:arr[arr.length-1].spec,max:600,cnt:1,auto:false});renderGroups(k);update();});
+});
+const saveJob=()=>{try{const v={};VAL_IDS.forEach(i=>v[i]=$(i).value);SEG_IDS.forEach(s=>v[s]=seg(s));v.fSpec=$("fSpec").value;v.fSSpec=$("fSSpec").value;v.tLink=$("tLink").checked;Object.assign(v,extraGet());
+  localStorage.setItem(JOBKEY,JSON.stringify(Object.assign({},job,{vals:v})));}catch(e){}};
+const specById=id=>lib.specs.find(s=>s.id===id);
+
+/* ---------- segmented controls ---------- */
+function seg(id){const b=$(id).querySelector('[aria-pressed="true"]');return b?b.dataset.v:null;}
+function setSeg(id,v){$(id).querySelectorAll("button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.v===v?"true":"false"));}
+SEG_IDS.forEach(id=>$(id).addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;setSeg(id,b.dataset.v);update();}));
+
+/* ---------- spec library UI ---------- */
+function specOptions(sel){return lib.specs.map(s=>`<option value="${s.id}"${s.id===sel?" selected":""}>${esc(s.name)}</option>`).join("");}
+
+function renderLib(){
+  $("specChips").innerHTML=lib.specs.map(s=>`<button type="button" class="chip" data-id="${s.id}" aria-pressed="${job.editSpec===s.id}">${esc(s.name)} · ${fmt(s.len)}mm${s.price?` · ${fmt(s.price)}원`:""}</button>`).join("")||'<span class="hint">아직 저장된 규격이 없습니다.</span>';
+  const f=$("fSpec").value,fs=$("fSSpec").value;
+  $("fSpec").innerHTML=specOptions(f);$("fSSpec").innerHTML=specOptions(fs);
+  [...vG,...hG].forEach(g=>{if(!specById(g.spec)&&lib.specs[0])g.spec=specById(f)?f:lib.specs[0].id;});
+  const ae=document.activeElement;if(!(ae&&ae.closest&&ae.closest(".groups")&&ae.tagName==="INPUT")){renderGroups("v");renderGroups("h");}
+  if(!specById($("fSpec").value)&&lib.specs[0])$("fSpec").value=lib.specs[0].id;
+  if(!specById($("fSSpec").value)&&lib.specs[0])$("fSSpec").value=$("fSpec").value;
+  $("fSpecChips").innerHTML=lib.specs.map(s=>`<button type="button" class="chip" data-id="${s.id}" aria-pressed="${$("fSpec").value===s.id}">${esc(s.name)}</button>`).join("");
+  const fS=specById($("fSpec").value),sS=specById($("fSSpec").value),rect=[fS,sS,...[...vG,...hG].map(g=>specById(g.spec))].some(s=>s&&s.w!==s.h);
+  $("fOrientBox").classList.toggle("hide",!rect);
+  if(fS){const bs=$("fOrient").querySelectorAll("button");bs[0].textContent=`가로 ${fmt(fS.w)}mm`;bs[1].textContent=`세로 ${fmt(fS.h)}mm`;}
+}
+function loadEditor(id){const s=specById(id);job.editSpec=s?id:null;$("sName").value=s?s.name:"";$("sW").value=s?s.w:"";$("sH").value=s?s.h:"";$("sLen").value=s?s.len:6000;$("sPrice").value=s?s.price:"";$("sMsg").textContent="";renderLib();}
+$("specChips").addEventListener("click",e=>{const b=e.target.closest(".chip");if(b)loadEditor(b.dataset.id);});
+$("fSpecChips").addEventListener("click",e=>{const b=e.target.closest(".chip");if(!b)return;const old=$("fSpec").value;
+  if($("fSSpec").value===old)$("fSSpec").value=b.dataset.id;[...vG,...hG].forEach(g=>{if(g.spec===old)g.spec=b.dataset.id;});$("fSpec").value=b.dataset.id;renderLib();update();});
+$("sNew").addEventListener("click",()=>loadEditor(null));
+$("sSave").addEventListener("click",()=>{
+  const name=$("sName").value.trim(),w=parseFloat($("sW").value),hh=parseFloat($("sH").value),len=parseFloat($("sLen").value),price=parseFloat($("sPrice").value)||0;
+  if(!name||!(w>0)||!(hh>0)||!(len>0)){$("sMsg").textContent="이름, 가로, 세로, 한 본 길이를 넣어 주세요.";return;}
+  let s=specById(job.editSpec);
+  if(s)Object.assign(s,{name,w,h:hh,len,price});else{s={id:uid(),name,w,h:hh,len,price};lib.specs.push(s);job.editSpec=s.id;}
+  saveLib();renderLib();update();$("sMsg").textContent="저장했습니다.";
+});
+$("sDel").addEventListener("click",()=>{
+  if(!job.editSpec)return;const used=job.rows.some(r=>r.specId===job.editSpec);
+  if(used){$("sMsg").textContent="부재 목록에서 쓰고 있는 규격은 지울 수 없습니다.";return;}
+  lib.specs=lib.specs.filter(s=>s.id!==job.editSpec);saveLib();loadEditor(null);update();
+});
+
+/* ---------- frame template ---------- */
+function frameParts(){
+  const W=num("fW"),H=num("fH"),fs=specById($("fSpec").value),joint=seg("fJoint"),cross=seg("fCross");
+  if(!fs||!(W>0&&H>0))return {err:"가로, 세로, 테두리 규격을 확인하세요."};
+  const dim=s=>seg("fOrient")==="h"?s.h:s.w,a=dim(fs);
+  if(W<=2*a||H<=2*a)return {err:"치수가 파이프 두께보다 작습니다."};
+  const innerW=W-2*a,innerH=H-2*a;
+  const prep=(G,len)=>G.map(g=>{const s=specById(g.spec)||fs;const n=g.auto&&g.max>0?Math.max(0,Math.ceil(len/g.max)-1):Math.max(0,Math.round(g.cnt||0));g.cnt=n;return {s,b:dim(s),n,auto:g.auto};});
+  const V=prep(vG,innerW),Hh=prep(hG,innerH);
+  // 자동 계산된 개수를 화면 칸에 반영 (입력 중인 칸은 건드리지 않음)
+  [["v",V],["h",Hh]].forEach(([k,L])=>L.forEach((g,i)=>{const el=document.querySelector(`#${k}Groups .grp[data-i="${i}"] input[data-f="cnt"]`);if(el&&el!==document.activeElement)el.value=g.n;}));
+  const nV=V.reduce((s,g)=>s+g.n,0),nH=Hh.reduce((s,g)=>s+g.n,0),sumV=V.reduce((s,g)=>s+g.n*g.b,0),sumH=Hh.reduce((s,g)=>s+g.n*g.b,0);
+  if(nV&&sumV>=innerW)return {err:"세로 뼈대가 너무 많아 들어갈 자리가 없습니다."};
+  if(nH&&sumH>=innerH)return {err:"가로 뼈대가 너무 많아 들어갈 자리가 없습니다."};
+  const rows=[],r1=x=>Math.round(x*10)/10;
+  if(joint==="miter")rows.push({name:"테두리 가로",specId:fs.id,len:W,qty:2},{name:"테두리 세로",specId:fs.id,len:H,qty:2});
+  else rows.push({name:"테두리 가로",specId:fs.id,len:W,qty:2},{name:"테두리 세로",specId:fs.id,len:H-2*a,qty:2});
+  let welds=4;const vCont=cross!=="h",gapV=nV?(innerW-sumV)/(nV+1):0,gapH=nH?(innerH-sumH)/(nH+1):0;
+  const add=(L,base,contLen,cutGap,segs)=>L.forEach((g,i)=>{if(!g.n)return;const name=L.filter(x=>x.n).length>1||i>0?`${base} ${i+1}`:base;
+    const len=segs>1?cutGap:contLen;rows.push({name,specId:g.s.id,len:r1(len),qty:g.n*segs});welds+=2*g.n*segs;});
+  add(V,"세로 뼈대",innerH,gapH,vCont||!nH?1:nH+1);
+  add(Hh,"가로 뼈대",innerW,gapV,!vCont||!nV?1:nV+1);
+  // 그림용: 규격이 섞이면 고르게 번갈아 놓기
+  const order=L=>L.flatMap(g=>Array.from({length:g.n},(_,k)=>({b:g.b,key:(k+.5)/g.n}))).sort((x,y)=>x.key-y.key).map(x=>x.b);
+  return {rows,welds,nV,nH,W,H,a,joint,vCont,gapV,gapH,V,Hh,vW:order(V),hW:order(Hh)};
+}
+const BOX_FACES=[["F","앞면","w"],["B","뒷면","w"],["L","왼쪽면","d"],["R","오른쪽면","d"],["T","윗면","top"],["D","바닥","top"]];
+function boxParts(){
+  const W=num("bW"),D=num("bD"),H=num("bH"),fs=specById($("fSpec").value),ss=specById($("fSSpec").value)||fs;
+  if(!fs||!(W>0&&D>0&&H>0))return {err:"가로, 깊이, 높이, 규격을 확인하세요."};
+  const dim=s=>seg("fOrient")==="h"?s.h:s.w,a=dim(fs),b=dim(ss);
+  if(W<=2*a||D<=2*a||H<=2*a)return {err:"치수가 파이프 두께보다 작습니다."};
+  const cnt=id=>Math.max(0,Math.round(num(id)));
+  const rows=[{name:"기둥",specId:fs.id,len:H,qty:4},{name:"가로대 (가로)",specId:fs.id,len:W-2*a,qty:4},{name:"가로대 (깊이)",specId:fs.id,len:D-2*a,qty:4}];
+  let welds=16;const faces={};const r1=x=>Math.round(x*10)/10;
+  for(const [k,nm,kind] of BOX_FACES){
+    const nh=cnt(`b${k}h`),nv=cnt(`b${k}v`);faces[k]={nh,nv};
+    // span of the "가로" member, span of the second member, and the room along which each is spread
+    const hLen=kind==="d"?D-2*a:W-2*a, vFull=kind==="top"?D-2*a:H-2*a, vSpread=kind==="d"?D-2*a:W-2*a;
+    if(nh&&nh*b>=vFull)return {err:`${nm}의 가로 보강이 너무 많습니다.`};
+    if(nv&&nv*b>=vSpread)return {err:`${nm}의 ${kind==="top"?"깊이":"세로"} 보강이 너무 많습니다.`};
+    if(nh){rows.push({name:`${nm} 가로 보강`,specId:ss.id,len:r1(hLen),qty:nh});welds+=2*nh;}
+    if(nv){const segs=nh+1,segLen=(vFull-nh*b)/segs;rows.push({name:`${nm} ${kind==="top"?"깊이":"세로"} 보강`,specId:ss.id,len:r1(segLen),qty:nv*segs});welds+=2*nv*segs;}
+  }
+  return {box:true,rows,welds,W,D,H,a,b,faces};
+}
+function tplParts(){return $("tSel").value==="box"?boxParts():frameParts();}
+function drawBox(bp){
+  const {W,D,H,a,faces}=bp,c=Math.cos(Math.PI/6),s=Math.sin(Math.PI/6);
+  const P=(x,y,z)=>[(x-z)*c,(x+z)*s-y];
+  const lines=[];const L=(p,q,br)=>lines.push([P(...p),P(...q),br]);
+  [[0,0],[W,0],[W,D],[0,D]].forEach(([x,z])=>L([x,0,z],[x,H,z]));
+  [0,H].forEach(y=>{L([0,y,0],[W,y,0]);L([0,y,D],[W,y,D]);L([0,y,0],[0,y,D]);L([W,y,0],[W,y,D]);});
+  const pos=(len,n)=>Array.from({length:n},(_,i)=>a+(i+1)*(len-2*a)/(n+1));
+  const F=faces;
+  pos(H,F.F.nh).forEach(y=>L([0,y,0],[W,y,0],1));pos(W,F.F.nv).forEach(x=>L([x,0,0],[x,H,0],1));
+  pos(H,F.B.nh).forEach(y=>L([0,y,D],[W,y,D],1));pos(W,F.B.nv).forEach(x=>L([x,0,D],[x,H,D],1));
+  pos(H,F.L.nh).forEach(y=>L([0,y,0],[0,y,D],1));pos(D,F.L.nv).forEach(z=>L([0,0,z],[0,H,z],1));
+  pos(H,F.R.nh).forEach(y=>L([W,y,0],[W,y,D],1));pos(D,F.R.nv).forEach(z=>L([W,0,z],[W,H,z],1));
+  pos(D,F.T.nh).forEach(z=>L([0,H,z],[W,H,z],1));pos(W,F.T.nv).forEach(x=>L([x,H,0],[x,H,D],1));
+  pos(D,F.D.nh).forEach(z=>L([0,0,z],[W,0,z],1));pos(W,F.D.nv).forEach(x=>L([x,0,0],[x,0,D],1));
+  const xs=lines.flatMap(l=>[l[0][0],l[1][0]]),yv=lines.flatMap(l=>[l[0][1],l[1][1]]),mnx=Math.min(...xs),mxx=Math.max(...xs),mny=Math.min(...yv),mxy=Math.max(...yv),M=Math.max(mxx-mnx,mxy-mny),pad=M*.06,fsz=M*.04;
+  let svg=`<svg viewBox="${mnx-pad} ${mny-pad} ${mxx-mnx+2*pad} ${mxy-mny+2*pad+fsz*1.6}" role="img" aria-label="입체 프레임 미리보기">`;
+  lines.forEach(([p,q,br])=>svg+=`<line x1="${p[0]}" y1="${p[1]}" x2="${q[0]}" y2="${q[1]}" stroke="${br?"var(--steel)":"var(--steelDark)"}" stroke-width="${br?3:4}" stroke-linecap="round" vector-effect="non-scaling-stroke"/>`);
+  svg+=`<text x="${(mnx+mxx)/2}" y="${mxy+fsz*1.4}" font-size="${fsz}" fill="var(--muted)" text-anchor="middle">${fmt(W)} × ${fmt(D)} × ${fmt(H)} mm</text></svg>`;
+  return svg;
+}
+function drawFrame(fp){
+  if(fp.err){$("fPreview").innerHTML=`<p class="hint">${esc(fp.err)}</p>`;$("fInfo").textContent="";return;}
+  if(fp.box){$("fPreview").innerHTML=drawBox(fp);const n=Object.values(fp.faces).reduce((s,f)=>s+f.nh+f.nv,0);$("fInfo").textContent=`기둥 4개 · 보강대 ${n}줄 · 용접 ${fp.welds}곳`;return;}
+  const {W,H,a,nV,nH}=fp,pad=Math.max(W,H)*.06,fsz=Math.max(W,H)*.04;
+  let s=`<svg viewBox="${-pad} ${-pad} ${W+2*pad} ${H+2*pad+fsz*1.6}" role="img" aria-label="프레임 미리보기">`;
+  const R=(x,y,w,h,c)=>`<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${c}" stroke="var(--ink)" stroke-width="1" vector-effect="non-scaling-stroke"/>`;
+  s+=R(0,0,W,H,"none");
+  if(fp.joint==="miter"){s+=`<path d="M0 0H${W}V${H}H0Z M${a} ${a}V${H-a}H${W-a}V${a}Z" fill="var(--steel)" fill-rule="evenodd" stroke="var(--ink)" stroke-width="1" vector-effect="non-scaling-stroke"/>`;
+    [[0,0,a,a],[W,0,W-a,a],[W,H,W-a,H-a],[0,H,a,H-a]].forEach(([x1,y1,x2,y2])=>s+=`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="var(--ink)" stroke-width="1" vector-effect="non-scaling-stroke"/>`);}
+  else{s+=R(0,0,W,a,"var(--steel)")+R(0,H-a,W,a,"var(--steel)")+R(0,a,a,H-2*a,"var(--steelDark)")+R(W-a,a,a,H-2*a,"var(--steelDark)");}
+  const innerW=W-2*a,innerH=H-2*a,{vCont,vW,hW,gapV,gapH}=fp;
+  const place=(ws,gap)=>{let p=a,o=[];ws.forEach(w=>{p+=gap;o.push([p,w]);p+=w;});return o;};
+  const xs=place(vW,gapV),ys=place(hW,gapH);
+  const spans=(lo,hi,cuts)=>{const e=[lo,...cuts.flatMap(([c,w])=>[c,c+w]),hi],o=[];for(let k=0;k<e.length;k+=2)o.push([e[k],e[k+1]]);return o;};
+  if(vCont){xs.forEach(([x,w])=>s+=R(x,a,w,innerH,"var(--steelDark)"));ys.forEach(([y,w])=>spans(a,W-a,xs).forEach(([x1,x2])=>s+=R(x1,y,x2-x1,w,"var(--steel)")));}
+  else{ys.forEach(([y,w])=>s+=R(a,y,innerW,w,"var(--steel)"));xs.forEach(([x,w])=>spans(a,H-a,ys).forEach(([y1,y2])=>s+=R(x,y1,w,y2-y1,"var(--steelDark)")));}
+  s+=`<text x="${W/2}" y="${H+fsz*1.4}" font-size="${fsz}" fill="var(--muted)" text-anchor="middle">${fmt(W)} × ${fmt(H)} mm</text></svg>`;
+  $("fPreview").innerHTML=s;
+  [["v",fp.V],["h",fp.Hh]].forEach(([k,L])=>L.forEach((g,i)=>{const n=document.querySelector(`#${k}Groups .grp[data-i="${i}"] [data-note]`);if(n)n.textContent=`${g.s.name} ${g.n}개 · ${g.auto?"최대 간격 기준 자동":"직접 입력"}`;}));
+  $("vInfo").textContent=nV?`세로 뼈대 합계 ${nV}개 · 빈 간격 ${fmt(fp.gapV,1)}mm`:"세로 뼈대 없음";
+  $("hInfo").textContent=nH?`가로 뼈대 합계 ${nH}개 · 빈 간격 ${fmt(fp.gapH,1)}mm`:"가로 뼈대 없음";
+  $("crossBox").classList.toggle("hide",!(nV&&nH));
+  $("fInfo").textContent=`용접 ${fp.welds}곳`;
+}
+function syncTpl(fp){
+  if(!$("tLink").checked||fp.err)return false;
+  const sig=rs=>rs.map(r=>[r.name,r.specId,r.len,r.qty].join("|")).join(";");
+  const oldAuto=job.rows.filter(r=>r.auto),before=sig(oldAuto),old=new Map(oldAuto.map(r=>[r.name,r]));
+  const gen=fp.rows.map(r=>{const o=old.get(r.name);return Object.assign({id:o?o.id:uid(),holes:o?o.holes||0:0,bends:o?o.bends||0:0,auto:true,fromTpl:true},r);});
+  job.rows=[...gen,...job.rows.filter(r=>!r.auto)];
+  return before!==sig(gen);
+}
+function tplWelds(){const fp=tplParts();return $("tLink").checked&&!fp.err?fp.welds:0;}
+function weldsPer(){return tplWelds()+Math.max(0,Math.round(num("cWeldX")));}
+$("tLink").addEventListener("change",()=>{
+  if($("tLink").checked)job.rows=job.rows.filter(r=>!r.fromTpl);
+  else job.rows.forEach(r=>{r.auto=false;});
+  renderRows();update();
+});
+$("bFill").addEventListener("click",()=>{
+  const fs=specById($("fSpec").value),smax=num("fMax");if(!fs||!(smax>0))return;
+  const a=seg("fOrient")==="h"?fs.h:fs.w,cnt=len=>Math.max(0,Math.ceil((len-2*a)/smax)-1),W=num("bW"),D=num("bD"),H=num("bH");
+  const set=(id,v)=>$(id).value=v;
+  set("bFh",cnt(H));set("bFv",cnt(W));set("bBh",cnt(H));set("bBv",cnt(W));
+  set("bLh",cnt(H));set("bLv",cnt(D));set("bRh",cnt(H));set("bRv",cnt(D));
+  set("bTh",cnt(D));set("bTv",cnt(W));set("bDh",cnt(D));set("bDv",cnt(W));update();
+});
+
+/* ---------- parts table ---------- */
+function renderRows(){
+  $("partTable").querySelector("tbody").innerHTML=job.rows.map(r=>{const lk=r.auto?" disabled":"";return `<tr data-id="${r.id}">
+    <td><input class="name" data-k="name" value="${esc(r.name)}"${lk} title="${r.auto?"템플릿 조각: 템플릿에서 바꾸세요":""}"></td>
+    <td><select data-k="specId"${lk}>${specOptions(r.specId)}</select></td>
+    <td><input data-k="len" type="number" inputmode="decimal" min="0" step="any" value="${r.len}"${lk}></td>
+    <td><input data-k="qty" type="number" inputmode="numeric" min="0" step="1" value="${r.qty}"${lk}></td>
+    <td><input data-k="holes" type="number" inputmode="numeric" min="0" step="1" value="${r.holes||0}"></td>
+    <td><input data-k="bends" type="number" inputmode="numeric" min="0" step="1" value="${r.bends||0}"></td>
+    <td>${r.auto?'<span class="hint" title="템플릿 조각">템플릿</span>':'<button type="button" class="x" aria-label="삭제" data-del="1">✕</button>'}</td></tr>`;}).join("")||`<tr><td colspan="7" class="hint" style="text-align:left">위에서 템플릿을 넣거나 '직접 추가'로 파이프 조각을 넣으세요.</td></tr>`;
+}
+$("partTable").addEventListener("input",e=>{const tr=e.target.closest("tr"),k=e.target.dataset.k;if(!tr||!k)return;const r=job.rows.find(x=>x.id===tr.dataset.id);if(!r)return;
+  r[k]=k==="name"||k==="specId"?e.target.value:parseFloat(e.target.value)||0;update();});
+$("partTable").addEventListener("change",e=>{if(e.target.tagName==="SELECT"){const tr=e.target.closest("tr"),r=job.rows.find(x=>x.id===tr.dataset.id);if(r){r.specId=e.target.value;update();}}});
+$("partTable").addEventListener("click",e=>{if(!e.target.dataset.del)return;const tr=e.target.closest("tr");job.rows=job.rows.filter(r=>r.id!==tr.dataset.id);renderRows();update();});
+$("pAdd").addEventListener("click",()=>{job.rows.push({id:uid(),name:"조각",specId:$("fSpec").value||(lib.specs[0]||{}).id,len:1000,qty:1,holes:0,bends:0});renderRows();update();});
+$("pClear").addEventListener("click",()=>{job.rows=[];renderRows();update();});
+
+/* ---------- materials ---------- */
+const matKey=m=>(m.name||"").trim()+"|"+(m.spec||"").trim();
+function renderMats(){
+  $("matChips").innerHTML=lib.mats.map(m=>`<span class="cpair${job.editMat===m.id?" on":""}"><button type="button" class="chip" data-id="${m.id}" aria-pressed="${job.editMat===m.id}" title="불러오기">${esc(m.name)}${m.spec?` (${esc(m.spec)})`:""} · ${fmt(m.price)}원</button><button type="button" class="cedit" data-delmat="${m.id}" aria-label="${esc(m.name)} 삭제">삭제</button></span>`).join("")+(lib.mats.length?"":'<span class="hint">저장된 부자재가 아직 없습니다. 아래 칸에 품목·규격·단가를 넣고 저장하세요.</span>');
+  $("matTable").querySelector("tbody").innerHTML=job.mats.map(m=>`<tr data-id="${m.id}">
+    <td><input class="name" data-k="name" value="${esc(m.name)}" placeholder="예: 이동식 캐스터"></td>
+    <td><input class="name" data-k="spec" value="${esc(m.spec||"")}" placeholder="예: 75mm 우레탄"></td>
+    <td><input data-k="qty" type="number" inputmode="numeric" min="0" step="any" value="${m.qty}"></td>
+    <td><input data-k="price" type="number" inputmode="decimal" min="0" step="any" value="${m.price}"></td>
+    <td>${fmt((m.qty||0)*(m.price||0))}원</td>
+    <td><button type="button" class="x" data-del="1" aria-label="이번 작업에서 빼기">✕</button></td></tr>`).join("")||'<tr><td colspan="6" class="hint" style="text-align:left">위 버튼을 누르거나 직접 추가하세요.</td></tr>';
+}
+function loadMatEditor(id){const m=lib.mats.find(x=>x.id===id);job.editMat=m?id:null;$("mName").value=m?m.name:"";$("mSpec").value=m?m.spec||"":"";$("mPrice").value=m?m.price:"";syncMatBtn();}
+function matForm(){
+  const name=$("mName").value.trim(),spec=$("mSpec").value.trim(),price=parseFloat($("mPrice").value)||0;
+  const sel=lib.mats.find(x=>x.id===job.editMat),target=sel||lib.mats.find(x=>matKey(x)===name+"|"+spec);
+  if(!target)return {name,spec,price,mode:"new",ok:!!name};
+  const changed=target.name!==name||(target.spec||"")!==spec||Number(target.price)!==price;
+  return {name,spec,price,mode:"edit",target,ok:!!name&&changed};
+}
+function syncMatBtn(){const f=matForm();$("mLibSave").textContent=f.mode==="new"?"등록":"수정";$("mLibSave").disabled=!f.ok;}
+["mName","mSpec","mPrice"].forEach(id=>$(id).addEventListener("input",syncMatBtn));
+function askDelete(sub,onOk,y,opt){
+  opt=opt||{};const d=$("confirmDlg");$("confirmSub").textContent=sub||"";$("dlgErr").textContent="";
+  $("confirmMsg").textContent=opt.msg||"정말 삭제하시겠습니까?";$("dlgOk").textContent=opt.ok||"삭제";$("dlgOk").className=opt.ok?"dlgcancel":"dlgdel";
+  const inp=$("dlgInput");$("dlgInputBox").classList.toggle("hide",!opt.input);if(opt.input){inp.value=opt.input.value||"";inp.onkeydown=ev=>{if(ev.key==="Enter"){ev.preventDefault();$("dlgOk").click();}};}
+  /* 블로그에 긴 iframe으로 넣으면 화면 가운데가 iframe 전체의 가운데라서, 누른 위치 근처에 띄웁니다 */
+  if(typeof y==="number"){d.style.inset=`${Math.max(12,y-90)}px 0 auto 0`;d.style.margin="0 auto";}else{d.style.inset="";d.style.margin="";}
+  const close=ok=>{
+    if(ok&&opt.input){const v=inp.value.trim(),err=opt.input.validate?opt.input.validate(v):(v?"":"이름을 넣어 주세요.");if(err){$("dlgErr").textContent=err;inp.focus();return;}
+      d.close();$("dlgOk").onclick=$("dlgCancel").onclick=null;onOk(v);return;}
+    d.close();$("dlgOk").onclick=$("dlgCancel").onclick=null;if(ok)onOk();};
+  $("dlgOk").onclick=()=>close(true);$("dlgCancel").onclick=()=>close(false);
+  d.oncancel=e=>{e.preventDefault();close(false);};
+  if(d.showModal)d.showModal();else if(window.confirm("정말 삭제하시겠습니까?"))onOk();
+  if(opt.input){inp.focus();inp.select();}else $("dlgCancel").focus();
+}
+$("matChips").addEventListener("click",e=>{
+  const del=e.target.closest(".cedit");
+  if(del){const m=lib.mats.find(x=>x.id===del.dataset.delmat);if(!m)return;
+    askDelete(`${m.name}${m.spec?` (${m.spec})`:""} · 이번 작업에 들어간 부자재는 그대로 남습니다.`,()=>{lib.mats=lib.mats.filter(x=>x.id!==m.id);saveLib();if(job.editMat===m.id)loadMatEditor(null);renderMats();$("mMsg").textContent=`'${m.name}'을(를) 목록에서 지웠습니다.`;},e.clientY);return;}
+  const b=e.target.closest(".chip");if(!b)return;const m=lib.mats.find(x=>x.id===b.dataset.id);if(!m)return;
+  if(job.editMat===m.id){loadMatEditor(null);renderMats();$("mMsg").textContent="선택을 풀었습니다.";return;}
+  loadMatEditor(m.id);
+  const ex=job.mats.find(x=>matKey(x)===matKey(m));
+  if(!ex){job.mats.push({id:uid(),name:m.name,spec:m.spec||"",qty:1,price:m.price});$("mMsg").textContent=`'${m.name}'을(를) 이번 작업에 넣었습니다.`;}
+  else $("mMsg").textContent=`'${m.name}'은(는) 이미 이번 작업에 있습니다. 수량은 아래 표에서 바꾸세요.`;
+  renderMats();update();});
+$("mLibSave").addEventListener("click",()=>{
+  const f=matForm();if(!f.ok)return;
+  let m=f.target;const oldKey=m?matKey(m):null;
+  if(f.mode==="new"){m={id:uid(),name:f.name,spec:f.spec,price:f.price};lib.mats.push(m);}
+  else Object.assign(m,{name:f.name,spec:f.spec,price:f.price});
+  saveLib();
+  let touched=0;if(oldKey)job.mats.forEach(x=>{if(matKey(x)===oldKey){x.name=f.name;x.spec=f.spec;x.price=f.price;touched++;}});
+  loadMatEditor(null);renderMats();update();
+  $("mMsg").textContent=(f.mode==="new"?"등록했습니다.":"수정했습니다.")+(touched?` 이번 작업의 같은 품목도 바꿨습니다.`:"");
+});
+$("mLibClear").addEventListener("click",()=>{loadMatEditor(null);renderMats();$("mMsg").textContent="";$("mName").focus();});
+$("matTable").addEventListener("input",e=>{const tr=e.target.closest("tr"),k=e.target.dataset.k;if(!tr||!k)return;const m=job.mats.find(x=>x.id===tr.dataset.id);if(!m)return;
+  m[k]=k==="name"||k==="spec"?e.target.value:parseFloat(e.target.value)||0;tr.children[4].textContent=fmt((m.qty||0)*(m.price||0))+"원";update(false);});
+$("matTable").addEventListener("click",e=>{const tr=e.target.closest("tr");if(!tr||!e.target.dataset.del)return;job.mats=job.mats.filter(x=>x.id!==tr.dataset.id);renderMats();update();});
+$("mAdd").addEventListener("click",()=>{job.mats.push({id:uid(),name:"",spec:"",qty:1,price:0});renderMats();update();});
+
+/* ---------- cutting optimisation ---------- */
+function fitsAdd(bin,p,stock,kerf){const n=bin.cuts.length+1,core=bin.sum+p+kerf*(n-1);return core<=stock+1e-9&&(Math.abs(core-stock)<1e-9||core+kerf<=stock+1e-9);}
+function addTo(bin,p){bin.cuts.push(p);bin.sum+=p.len;}
+function leftover(bin,stock,kerf){const core=bin.sum+kerf*(bin.cuts.length-1);return core>=stock-1e-9?0:stock-core-kerf;}
+function packOnce(pieces,stock,kerf,best){
+  const bins=[];
+  for(const p of pieces){let target=null;
+    if(best){let bl=Infinity;for(const b of bins)if(fitsAdd(b,p.len,stock,kerf)){const l=stock-b.sum-p.len;if(l<bl){bl=l;target=b;}}}
+    else for(const b of bins)if(fitsAdd(b,p.len,stock,kerf)){target=b;break;}
+    if(!target){target={cuts:[],sum:0};bins.push(target);}addTo(target,p);}
+  return bins;
+}
+function score(bins,stock,kerf){const lo=bins.map(b=>leftover(b,stock,kerf));return [bins.length,-lo.reduce((s,x)=>s+x*x,0)];}
+function better(a,b){return a[0]<b[0]||(a[0]===b[0]&&a[1]<b[1]);}
+function pack(pieces,stock,kerf){
+  const sorted=pieces.slice().sort((a,b)=>b.len-a.len);
+  let best=packOnce(sorted,stock,kerf,false),bs=score(best,stock,kerf);
+  const tryB=bins=>{const s=score(bins,stock,kerf);if(better(s,bs)){best=bins;bs=s;}};
+  tryB(packOnce(sorted,stock,kerf,true));
+  const total=pieces.reduce((s,p)=>s+p.len+kerf,0),lb=Math.ceil((total-kerf)/(stock+kerf)-1e-9);
+  const trials=pieces.length>600?10:pieces.length>200?60:300;let seed=12345;const rnd=()=>(seed=(seed*1103515245+12345)%2147483648)/2147483648;
+  for(let t=0;t<trials&&bs[0]>Math.max(1,lb);t++){
+    const arr=sorted.map(p=>({p,k:p.len*(0.85+0.3*rnd())})).sort((a,b)=>b.k-a.k).map(x=>x.p);
+    tryB(packOnce(arr,stock,kerf,t%2===0));
+  }
+  for(let t=0;t<30;t++){const arr=sorted.map(p=>({p,k:p.len*(0.9+0.2*rnd())})).sort((a,b)=>b.k-a.k).map(x=>x.p);tryB(packOnce(arr,stock,kerf,true));}
+  return {bins:best,lb};
+}
+
+/* ---------- main update ---------- */
+let last=null;
+function update(full=true){
+  saveJob();
+  const tpl=$("tSel").value;$("tplFrame").classList.toggle("hide",tpl!=="frame");$("frameOnly").classList.toggle("hide",tpl!=="frame");$("tplBox").classList.toggle("hide",tpl!=="box");$("boxOnly").classList.toggle("hide",tpl!=="box");$("boxCommon").classList.toggle("hide",tpl!=="box");
+  const fp=tplParts();drawFrame(fp);
+  if(!full&&last){renderCost();return;}
+  if(syncTpl(fp))renderRows();
+  const qty=Math.max(1,Math.round(num("jQty",1))),kerf=Math.max(0,num("jKerf")),reuse=Math.max(0,num("jReuse"));
+  const bySpec=new Map(),errs=[],nameColor=new Map();
+  for(const r of job.rows){const s=specById(r.specId);if(!s||!(r.len>0)||!(r.qty>0))continue;
+    if(!nameColor.has(r.name))nameColor.set(r.name,PALETTE[nameColor.size%PALETTE.length]);
+    if(r.len>s.len){errs.push(`'${r.name}' (${fmt(r.len)}mm)이 ${s.name} 한 본(${fmt(s.len)}mm)보다 깁니다. 이음 용접이 필요하니 조각을 나눠 입력하세요.`);continue;}
+    if(!bySpec.has(s.id))bySpec.set(s.id,{s,pieces:[]});
+    const g=bySpec.get(s.id);for(let i=0;i<r.qty*qty;i++)g.pieces.push({len:r.len,name:r.name});
+  }
+  const results=[];
+  for(const g of bySpec.values()){const {bins}=pack(g.pieces,g.s.len,kerf);results.push({s:g.s,bins,kerf});}
+  last={results,qty,kerf,reuse,errs,nameColor};
+  renderPlan();renderCost();
+}
+function renderPlan(){
+  const {results,kerf,reuse,errs,nameColor}=last;
+  if(!results.length){$("plan").innerHTML=errs.map(e=>`<p class="empty">${esc(e)}</p>`).join("")+(errs.length?"":'<p class="empty">파이프 절단 목록이 비어 있습니다.</p>');return;}
+  let h="";
+  for(const r of results){
+    const {s,bins}=r,stock=s.len,lo=bins.map(b=>leftover(b,stock,kerf)),loSum=lo.reduce((a,b)=>a+b,0),reusable=lo.filter(x=>x>=reuse&&x>0);
+    const groups=new Map();
+    bins.forEach((b,i)=>{const key=b.cuts.map(c=>c.len+"|"+c.name).sort().join(",");if(!groups.has(key))groups.set(key,{b,count:0,lo:lo[i]});groups.get(key).count++;});
+    h+=`<div class="spec"><div class="spechead"><span class="big">${fmt(bins.length)}본</span><span class="stat"><b>${esc(s.name)}</b> · 한 본 ${fmt(stock)}mm</span><span class="stat">남는 길이 합계 <b>${fmt(loSum)}mm</b></span><span class="stat">재사용 자투리 <b>${reusable.length}개</b>${reusable.length?` (${reusable.map(x=>fmt(x)).join(", ")}mm)`:""}</span></div>`;
+    const sc=Math.min(700/stock,1),bh=26,rows=[...groups.values()];
+    let svg=`<svg width="${stock*sc+150}" height="${rows.length*(bh+14)+4}" viewBox="0 0 ${stock*sc+150} ${rows.length*(bh+14)+4}" role="img" aria-label="${esc(s.name)} 절단 계획">`;
+    rows.forEach((g,i)=>{const y=i*(bh+14)+2;let x=0;
+      svg+=`<rect x="0" y="${y}" width="${stock*sc}" height="${bh}" fill="rgba(255,255,255,.08)" stroke="rgba(255,255,255,.35)"/>`;
+      g.b.cuts.slice().sort((a,b)=>b.len-a.len).forEach((c,k)=>{const w=c.len*sc;svg+=`<rect x="${x}" y="${y}" width="${w}" height="${bh}" fill="${nameColor.get(c.name)}" fill-opacity=".85" stroke="var(--mat)" stroke-width="1"/>`;
+        if(w>34)svg+=`<text x="${x+w/2}" y="${y+bh/2+4}" font-size="11" text-anchor="middle" fill="#1C2724">${fmt(c.len)}</text>`;x+=w+kerf*sc;});
+      svg+=`<text x="${stock*sc+8}" y="${y+bh/2+4}" font-size="12" fill="#fff">× ${g.count}본 · 남음 ${fmt(g.lo)}</text>`;});
+    h+=`<div class="bars">${svg}</svg></div></div>`;
+  }
+  const legend=[...nameColor].map(([n,c])=>`<span style="display:inline-flex;align-items:center;gap:5px;margin-right:12px"><span style="width:11px;height:11px;border-radius:2px;background:${c}"></span>${esc(n)}</span>`).join("");
+  $("plan").innerHTML=h+`<p class="empty" style="margin-top:12px;font-size:.85rem">${legend}</p><p class="empty" style="font-size:.82rem">톱날 두께 ${fmt(kerf,1)}mm를 자를 때마다 빼고 계산했습니다.</p>`+errs.map(e=>`<p class="warn" style="color:#FFD2C8">${esc(e)}</p>`).join("");
+}
+function renderCost(){
+  const won=x=>fmt(Math.round(x))+"원",qty=last?last.qty:1;
+  const markup=$("cMode").value==="markup",m=Math.max(0,num("cMargin"))/100;$("cMarginL").textContent=markup?"목표 마크업":"목표 마진율";
+  let pipe=0,lines=[];
+  if(last)for(const r of last.results){const c=r.bins.length*(r.s.price||0);pipe+=c;lines.push([`파이프 ${r.s.name} (${r.bins.length}본${r.s.price?` × ${fmt(r.s.price)}원`:""})`,r.s.price?won(c):"단가 미입력"]);}
+  let holes=0,bends=0;for(const r of job.rows){holes+=(r.holes||0)*(r.qty||0);bends+=(r.bends||0)*(r.qty||0);}
+  holes*=qty;bends*=qty;const welds=weldsPer()*qty;
+  const cH=holes*num("cHole"),cB=bends*num("cBend"),cW=welds*num("cWeld");
+  const matSum=job.mats.reduce((s,x)=>s+(x.qty||0)*(x.price||0),0)*qty,fixed=Math.max(0,num("cFixed"));
+  const total=pipe+cH+cB+cW+matSum+fixed,unit=total/qty;
+  const bad=!markup&&m>=1,sale=bad?NaN:markup?unit*(1+m):unit/(1-m);
+  const rows=[...lines,[`타공 (${fmt(holes)}개)`,won(cH)],[`벤딩 (${fmt(bends)}개소)`,won(cB)],[`용접 (${fmt(welds)}곳)`,won(cW)],["부자재",won(matSum)],["고정비",won(fixed)],["총 원가",won(total),1],[`제작물 1개당 원가 (${fmt(qty)}개 기준)`,won(unit),1]];
+  if(m>0&&!bad)rows.push(["제작물 1개당 판매가",won(sale)],["판매가 합계",won(sale*qty),1],["예상 이익",won(sale*qty-total)]);
+  $("sumTable").innerHTML=rows.map(([a,b,t])=>`<tr class="${t?"total":""}"><td>${a}</td><td>${b}</td></tr>`).join("")+
+    `<tr><td colspan="2" class="hint" style="text-align:left;white-space:normal">${markup?"판매가 = 원가 × (1 + 마크업)":"판매가 = 원가 ÷ (1 − 마진율)"}</td></tr>`+(bad?`<tr><td colspan="2" class="warn" style="text-align:left;white-space:normal">판매가 기준 마진율은 100% 미만이어야 합니다. 원가의 몇 배로 팔지 정하려면 마크업을 고르세요.</td></tr>`:"");
+}
+
+/* ---------- inputs ---------- */
+["fW","fH","bW","bD","bH","bFh","bFv","bBh","bBv","bLh","bLv","bRh","bRv","bTh","bTv","bDh","bDv","fMax","jQty","jKerf","jReuse"].forEach(id=>$(id).addEventListener("input",()=>update()));
+$("tSel").addEventListener("change",()=>update());
+["fSpec","fSSpec"].forEach(id=>$(id).addEventListener("change",()=>{renderLib();update();}));
+["cHole","cBend","cWeld","cWeldX","cFixed","cMargin"].forEach(id=>$(id).addEventListener("input",()=>update(false)));
+$("cMode").addEventListener("change",()=>update(false));
+
+/* ---------- backup ---------- */
+$("exp").addEventListener("click",()=>{
+  const v={};["cHole","cBend","cWeld","cFixed","cMode","cMargin","jKerf","jReuse"].forEach(i=>v[i]=$(i).value);
+  const blob=new Blob([JSON.stringify({kind:"pipe-calc-library",version:2,lib,prices:v,jobs:saved},null,2)],{type:"application/json"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="파이프계산기-내목록.json";document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500);
+  $("bMsg").textContent="내보냈습니다.";
+});
+$("imp").addEventListener("change",async e=>{const f=e.target.files[0];e.target.value="";if(!f)return;
+  try{const d=JSON.parse(await f.text());if(d.kind!=="pipe-calc-library"||!d.lib||!Array.isArray(d.lib.specs))throw 0;
+    lib={specs:d.lib.specs.filter(s=>s&&s.id&&s.name),mats:Array.isArray(d.lib.mats)?d.lib.mats:[]};migrate();saveLib();
+    if(d.prices)Object.keys(d.prices).forEach(i=>{if($(i))$(i).value=d.prices[i];});
+    if(Array.isArray(d.jobs)){d.jobs.forEach(j=>{if(j&&j.id&&j.state&&!saved.some(s=>s.id===j.id))saved.push(j);});persistSaved();renderJobs();}
+    renderLib();renderRows();renderMats();update();$("bMsg").textContent="불러왔습니다.";}
+  catch(err){$("bMsg").textContent="이 계산기에서 내보낸 파일이 아닙니다.";}});
+
+/* ---------- saved jobs ---------- */
+const SAVEKEY="pipe-calc-saved-v1";let saved=[];let currentId=null;
+try{const s=JSON.parse(localStorage.getItem(SAVEKEY)||"null");if(Array.isArray(s))saved=s;}catch(e){}
+try{currentId=localStorage.getItem(SAVEKEY+"-cur")||null;}catch(e){}
+const persistSaved=()=>{try{localStorage.setItem(SAVEKEY,JSON.stringify(saved));localStorage.setItem(SAVEKEY+"-cur",currentId||"");}catch(e){}};
+function capture(){
+  const v={};VAL_IDS.forEach(i=>v[i]=$(i).value);SEG_IDS.forEach(s=>v[s]=seg(s));v.fSpec=$("fSpec").value;v.fSSpec=$("fSSpec").value;v.tLink=$("tLink").checked;Object.assign(v,extraGet());
+  const used=new Set([v.fSpec,v.fSSpec,...vG.map(g=>g.spec),...hG.map(g=>g.spec),...job.rows.map(r=>r.specId)]);
+  return {vals:v,rows:JSON.parse(JSON.stringify(job.rows)),mats:JSON.parse(JSON.stringify(job.mats)),specs:lib.specs.filter(s=>used.has(s.id)).map(s=>Object.assign({},s))};
+}
+function applyState(st){
+  let added=0;(st.specs||[]).forEach(s=>{if(!specById(s.id)){lib.specs.push(Object.assign({},s));added++;}});if(added)saveLib();
+  const v=st.vals||{};VAL_IDS.forEach(i=>{if(v[i]!==undefined)$(i).value=v[i];});SEG_IDS.forEach(s=>{if(v[s])setSeg(s,v[s]);});$("tLink").checked=v.tLink!==false;
+  renderLib();if(specById(v.fSpec))$("fSpec").value=v.fSpec;if(specById(v.fSSpec))$("fSSpec").value=v.fSSpec;extraSet(v);renderLib();
+  job.rows=JSON.parse(JSON.stringify(st.rows||[]));job.mats=JSON.parse(JSON.stringify(st.mats||[])).map(m=>Object.assign({spec:""},m));
+  renderRows();renderMats();update();return added;
+}
+const jobColl=new Intl.Collator("ko",{numeric:true,sensitivity:"base"});
+const jobCat=s=>{const c=(s||"").trim().charAt(0);return /[\uAC00-\uD7A3\u3131-\u318E]/.test(c)?0:/[A-Za-z]/.test(c)?1:/[0-9]/.test(c)?2:3;};
+const jobCmp=(a,b)=>(jobCat(a.name)-jobCat(b.name))||jobColl.compare(a.name,b.name);
+function renderJobs(){
+  $("jobList").innerHTML=`<option value=""${currentId?"":" selected"}>(새 작업)</option>`+saved.slice().sort(jobCmp).map(s=>`<option value="${s.id}"${s.id===currentId?" selected":""}>${esc(s.name)} · ${new Date(s.time).toLocaleDateString("ko-KR")}</option>`).join("");
+}
+const curName=()=>{const s=saved.find(x=>x.id===currentId);return s?s.name:"";};
+const stateSig=()=>JSON.stringify(Object.assign(capture(),{specs:undefined}));
+let cleanSig=null;   // 마지막으로 저장하거나 불러온 상태
+function markClean(){cleanSig=stateSig();}
+function isDirty(){return cleanSig!==null&&stateSig()!==cleanSig;}
+function doSave(asNew,y){
+  const entry=!asNew&&currentId?saved.find(s=>s.id===currentId):null;
+  if(entry){Object.assign(entry,{time:Date.now(),state:capture()});persistSaved();renderJobs();saveJob();markClean();$("jMsg").textContent=`'${entry.name}'에 덮어썼습니다.`;return;}
+  const cur=curName();
+  askDelete(asNew&&cur?`'${cur}'은(는) 그대로 남고, 지금 화면이 새 이름으로 저장됩니다.`:"지금 화면을 새 작업으로 저장합니다.",name=>{
+    const e={id:uid(),name,time:Date.now(),state:capture()};saved.push(e);currentId=e.id;persistSaved();renderJobs();saveJob();markClean();
+    $("jMsg").textContent=`'${name}'(으)로 새로 저장했습니다.`;
+  },y,{msg:"작업 이름",ok:"저장",input:{value:cur?`${cur} 복사`:"",validate:v=>!v?"이름을 넣어 주세요.":saved.some(s=>s.name===v)?"같은 이름의 작업이 이미 있습니다.":""}});
+}
+function loadJob(id){
+  if(!id){currentId=null;persistSaved();renderJobs();saveJob();markClean();$("jMsg").textContent="새 작업입니다. 지금 화면을 바탕으로 고친 뒤 저장하면 이름을 물어봅니다.";return;}
+  const s=saved.find(x=>x.id===id);if(!s)return;
+  currentId=s.id;persistSaved();const added=applyState(s.state);renderJobs();saveJob();markClean();
+  $("jMsg").textContent=`'${s.name}'을(를) 불러왔습니다. 파이프 단가는 '내 규격 목록'의 현재 단가로 계산됩니다.`+(added?` 목록에 없던 규격 ${added}개를 추가했습니다.`:"");
+}
+$("jSave").addEventListener("click",e=>doSave(false,e.clientY));
+$("jSaveAs").addEventListener("click",e=>doSave(true,e.clientY));
+$("jobList").addEventListener("change",e=>{
+  const id=$("jobList").value;
+  if(isDirty()){const y=$("jobList").getBoundingClientRect().top+40;
+    renderJobs();
+    askDelete("저장하지 않은 변경 내용은 사라집니다.",()=>loadJob(id),y,{msg:"저장하지 않고 다른 작업을 불러올까요?",ok:"불러오기"});return;}
+  loadJob(id);
+});
+$("jDel").addEventListener("click",e=>{const id=$("jobList").value;if(!id){$("jMsg").textContent="지울 작업을 먼저 고르세요.";return;}
+  const s=saved.find(x=>x.id===id);
+  askDelete(`'${s?s.name:""}' 작업을 지웁니다. 지금 화면 내용은 그대로 남습니다.`,()=>{saved=saved.filter(x=>x.id!==id);if(currentId===id)currentId=null;persistSaved();renderJobs();markClean();$("jMsg").textContent="삭제했습니다.";},e.clientY);});
+
+/* ---------- print ---------- */
+function buildPrint(withPrice){
+  update();
+  const qty=last.qty,kerf=last.kerf,name=curName()||"작업지시서",now=new Date().toLocaleDateString("ko-KR");
+  const fp=tplParts();let shape="";
+  if(!fp.err&&job.rows.some(r=>r.auto)){const sp=specById($("fSpec").value);
+    shape=fp.box?`입체 프레임 ${fmt(fp.W)} × ${fmt(fp.D)} × ${fmt(fp.H)} mm · ${sp?esc(sp.name):""}`:`사각 프레임 ${fmt(fp.W)} × ${fmt(fp.H)} mm · ${sp?esc(sp.name):""} · ${fp.joint==="miter"?"45° 연귀":"맞대기"}`;}
+  let o=`<h1>${esc(name)}</h1><p class="meta">${now} · 제작 ${fmt(qty)}개 · 톱날 두께 ${fmt(kerf,1)}mm 반영${shape?` · ${shape}`:""}</p>`;
+  if(shape)o+=`<div class="pv">${$("fPreview").innerHTML}</div>`;
+  o+=`<section><h2>1. 준비할 파이프</h2><table><tr><th>규격</th><th class="n">한 본 길이</th><th class="n">필요 본수</th>${withPrice?'<th class="n">금액</th>':""}</tr>`+
+    last.results.map(r=>`<tr><td>${esc(r.s.name)} (${fmt(r.s.w)}×${fmt(r.s.h)})</td><td class="n">${fmt(r.s.len)}mm</td><td class="n"><b>${fmt(r.bins.length)}본</b></td>${withPrice?`<td class="n">${r.s.price?fmt(r.bins.length*r.s.price)+"원":"-"}</td>`:""}</tr>`).join("")+`</table></section>`;
+  o+=`<section><h2>2. 자르는 방법</h2>`;
+  for(const r of last.results){
+    const stock=r.s.len,groups=new Map();
+    r.bins.forEach(b=>{const cuts=b.cuts.slice().sort((x,y)=>y.len-x.len),key=cuts.map(c=>c.len+"|"+c.name).join(",");if(!groups.has(key))groups.set(key,{cuts,count:0,lo:leftover(b,stock,kerf)});groups.get(key).count++;});
+    o+=`<p><b>${esc(r.s.name)}</b> — ${fmt(r.bins.length)}본</p><table><tr><th>본수</th><th>한 본에서 자를 길이 (긴 것부터)</th><th class="n">남는 길이</th></tr>`;
+    for(const g of groups.values()){const cnt=new Map();g.cuts.forEach(c=>{const k=c.len+"|"+c.name;cnt.set(k,(cnt.get(k)||0)+1);});
+      o+=`<tr><td>${fmt(g.count)}본</td><td>${[...cnt].map(([k,n])=>{const[l,nm]=k.split("|");return `${esc(nm)} <b>${fmt1(+l)}mm × ${n}</b>`;}).join(", ")}</td><td class="n">${fmt(g.lo)}mm</td></tr>`;}
+    o+=`</table>`;
+  }
+  o+=`</section>`;
+  const totals=new Map();for(const r of job.rows){const s=specById(r.specId);if(!s||!(r.len>0)||!(r.qty>0))continue;const k=r.name+"|"+r.specId+"|"+r.len;const t=totals.get(k)||{r,s,n:0};t.n+=r.qty*qty;totals.set(k,t);}
+  o+=`<section><h2>3. 조각 목록 (전체 ${fmt(qty)}개 분)</h2><table><tr><th>이름</th><th>규격</th><th class="n">길이</th><th class="n">수량</th><th class="n">타공</th><th class="n">벤딩</th></tr>`+
+    [...totals.values()].map(t=>`<tr><td>${esc(t.r.name)}</td><td>${esc(t.s.name)}</td><td class="n">${fmt1(t.r.len)}mm</td><td class="n"><b>${fmt(t.n)}</b></td><td class="n">${t.r.holes?fmt(t.r.holes)+"개/조각":"-"}</td><td class="n">${t.r.bends?fmt(t.r.bends)+"곳/조각":"-"}</td></tr>`).join("")+`</table></section>`;
+  const mats=job.mats.filter(m=>m.name&&m.qty>0);
+  if(mats.length)o+=`<section><h2>4. 부자재 (전체 ${fmt(qty)}개 분)</h2><table><tr><th>품목</th><th>규격</th><th class="n">수량</th>${withPrice?'<th class="n">금액</th>':""}</tr>`+
+    mats.map(m=>`<tr><td>${esc(m.name)}</td><td>${esc(m.spec||"")}</td><td class="n"><b>${fmt(m.qty*qty)}</b></td>${withPrice?`<td class="n">${fmt(m.qty*qty*(m.price||0))}원</td>`:""}</tr>`).join("")+`</table></section>`;
+  let holes=0,bends=0;for(const r of job.rows){holes+=(r.holes||0)*(r.qty||0);bends+=(r.bends||0)*(r.qty||0);}
+  o+=`<section><h2>${mats.length?5:4}. 가공</h2><table><tr><th>타공</th><td class="n">${fmt(holes*qty)}개</td><th>벤딩</th><td class="n">${fmt(bends*qty)}곳</td><th>용접</th><td class="n">${fmt(weldsPer()*qty)}곳</td></tr></table></section>`;
+  if(withPrice)o+=`<section><h2>${mats.length?6:5}. 비용</h2><table>${$("sumTable").innerHTML}</table></section>`;
+  if(last.errs.length)o+=last.errs.map(e=>`<p class="meta">※ ${esc(e)}</p>`).join("");
+  $("printView").innerHTML=o;
+}
+$("printBtn").addEventListener("click",()=>{buildPrint($("printPrice").checked);window.print();});
+
+/* ---------- init ---------- */
+job.mats=(job.mats||[]).map(m=>Object.assign({spec:""},m));
+if(job.vals){const v=job.vals;VAL_IDS.forEach(i=>{if(v[i]!==undefined)$(i).value=v[i];});SEG_IDS.forEach(s=>{if(v[s])setSeg(s,v[s]);});$("tLink").checked=v.tLink!==false;}
+renderLib();
+if(job.vals){if(specById(job.vals.fSpec))$("fSpec").value=job.vals.fSpec;if(specById(job.vals.fSSpec))$("fSSpec").value=job.vals.fSSpec;extraSet(job.vals);renderLib();}
+else{$("fSpec").value="s40";$("fSSpec").value="s40";renderLib();}
+loadEditor(null);
+renderRows();renderMats();renderJobs();update();markClean();
+})();
+</script>
+<script>
+(function(){if(window.parent===window)return;var last=0,q=false;
+function send(){q=false;var h=Math.ceil(document.documentElement.scrollHeight);if(Math.abs(h-last)<2)return;last=h;try{window.parent.postMessage({type:"yochuk-height",h:h},"*");}catch(e){}}
+function sch(){if(!q){q=true;requestAnimationFrame(send);}}
+if(window.ResizeObserver)new ResizeObserver(sch).observe(document.body);window.addEventListener("load",sch);setInterval(sch,1500);sch();})();
+</script>
+</body>
+</html>
