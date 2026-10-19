@@ -303,7 +303,7 @@ td select{text-align:left;min-width:120px}
 
   <section class="card">
     <h2>내 목록 백업</h2>
-    <p class="hint">규격·부자재 목록, 단가, 저장한 작업은 이 브라우저에만 저장됩니다. 브라우저 데이터를 지우거나 다른 기기에서 쓰려면 파일로 내보내 두세요. 블로그 안에 끼워진 화면과 계산기 주소로 직접 연 화면은 브라우저가 저장 공간을 따로 나눌 수 있습니다.</p>
+    <p class="hint">규격·부자재 목록, 단가, 저장한 작업은 이 브라우저에만 저장됩니다. 백업 파일을 불러오면 이 브라우저의 목록과 저장한 작업이 백업 파일 내용으로 통째로 바뀝니다. 브라우저 데이터를 지우거나 다른 기기에서 쓰려면 파일로 내보내 두세요. 블로그 안에 끼워진 화면과 계산기 주소로 직접 연 화면은 브라우저가 저장 공간을 따로 나눌 수 있습니다.</p>
     <div class="row">
       <button type="button" class="btn ghost" id="exp">파일로 내보내기</button>
       <label class="btn ghost" style="margin:0">파일에서 불러오기<input type="file" id="imp" accept=".json,application/json" class="hide"></label>
@@ -577,7 +577,7 @@ function askDelete(sub,onOk,y,opt){
   $("confirmMsg").textContent=opt.msg||"정말 삭제하시겠습니까?";$("dlgOk").textContent=opt.ok||"삭제";$("dlgOk").className=opt.ok?"dlgcancel":"dlgdel";
   const inp=$("dlgInput");$("dlgInputBox").classList.toggle("hide",!opt.input);if(opt.input){inp.value=opt.input.value||"";inp.onkeydown=ev=>{if(ev.key==="Enter"){ev.preventDefault();$("dlgOk").click();}};}
   /* 블로그에 긴 iframe으로 넣으면 화면 가운데가 iframe 전체의 가운데라서, 누른 위치 근처에 띄웁니다 */
-  if(typeof y==="number"){d.style.inset=`${Math.max(12,y-90)}px 0 auto 0`;d.style.margin="0 auto";}else{d.style.inset="";d.style.margin="";}
+  if(typeof y==="number"){d.style.inset=`${Math.max(12,Math.min(y-90,window.innerHeight-240))}px 0 auto 0`;d.style.margin="0 auto";}else{d.style.inset="";d.style.margin="";}
   const close=ok=>{
     if(ok&&opt.input){const v=inp.value.trim(),err=opt.input.validate?opt.input.validate(v):(v?"":"이름을 넣어 주세요.");if(err){$("dlgErr").textContent=err;inp.focus();return;}
       d.close();$("dlgOk").onclick=$("dlgCancel").onclick=null;onOk(v);return;}
@@ -713,16 +713,21 @@ $("cMode").addEventListener("change",()=>update(false));
 $("exp").addEventListener("click",()=>{
   const v={};["cHole","cBend","cWeld","cFixed","cMode","cMargin","jKerf","jReuse"].forEach(i=>v[i]=$(i).value);
   const blob=new Blob([JSON.stringify({kind:"pipe-calc-library",version:2,lib,prices:v,jobs:saved},null,2)],{type:"application/json"});
-  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="파이프계산기-내목록.json";document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500);
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="길이계산기-백업.json";document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500);
   $("bMsg").textContent="내보냈습니다.";
 });
 $("imp").addEventListener("change",async e=>{const f=e.target.files[0];e.target.value="";if(!f)return;
-  try{const d=JSON.parse(await f.text());if(d.kind!=="pipe-calc-library"||!d.lib||!Array.isArray(d.lib.specs))throw 0;
+  let d;try{d=JSON.parse(await f.text());if(d.kind!=="pipe-calc-library"||!d.lib||!Array.isArray(d.lib.specs))throw 0;}
+  catch(err){$("bMsg").textContent="이 계산기에서 내보낸 파일이 아닙니다.";return;}
+  const hasJobs=Array.isArray(d.jobs);
+  askDelete(`규격 ${d.lib.specs.length}개, 부자재 ${(d.lib.mats||[]).length}개`+(hasJobs?`, 저장한 작업 ${d.jobs.length}개`:"")+`로 바뀝니다. 이 브라우저에 있던 목록${hasJobs?"과 작업":""}은 지워집니다.`,()=>{
     lib={specs:d.lib.specs.filter(s=>s&&s.id&&s.name),mats:Array.isArray(d.lib.mats)?d.lib.mats:[]};migrate();saveLib();
     if(d.prices)Object.keys(d.prices).forEach(i=>{if($(i))$(i).value=d.prices[i];});
-    if(Array.isArray(d.jobs)){d.jobs.forEach(j=>{if(j&&j.id&&j.state&&!saved.some(s=>s.id===j.id))saved.push(j);});persistSaved();renderJobs();}
-    renderLib();renderRows();renderMats();update();$("bMsg").textContent="불러왔습니다.";}
-  catch(err){$("bMsg").textContent="이 계산기에서 내보낸 파일이 아닙니다.";}});
+    if(hasJobs){saved=d.jobs.filter(j=>j&&j.id&&j.state);if(!saved.some(s=>s.id===currentId))currentId=null;persistSaved();renderJobs();}
+    renderLib();renderRows();renderMats();update();markClean();
+    $("bMsg").textContent="백업 파일 내용으로 바꿨습니다."+(hasJobs?"":" (예전 백업 파일이라 저장한 작업은 들어 있지 않아 그대로 두었습니다.)");
+  },$("bMsg").getBoundingClientRect().top,{msg:"백업 파일로 덮어쓸까요?",ok:"덮어쓰기"});
+});
 
 /* ---------- saved jobs ---------- */
 const SAVEKEY="pipe-calc-saved-v1";let saved=[];let currentId=null;

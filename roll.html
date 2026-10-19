@@ -272,6 +272,15 @@ label{display:block;font-size:.85rem;color:var(--muted);margin-bottom:4px}
     <div class="mview" id="mview"></div>
     <div class="mresult" id="mresult"></div>
   </section>
+  <section class="card">
+    <h2>내 목록 백업</h2>
+    <p class="hint">부자재 목록, 저장한 작업(도면 포함), 원가 설정은 이 브라우저에만 저장됩니다. 다른 PC나 브라우저에서 쓰려면 파일로 내보낸 뒤 그쪽에서 불러오세요. 불러오면 그 브라우저의 목록과 저장한 작업이 백업 파일 내용으로 통째로 바뀝니다.</p>
+    <div class="brow">
+      <button type="button" class="btn ghost" id="bExp">파일로 내보내기</button>
+      <label class="btn ghost" style="margin:0">파일에서 불러오기<input type="file" id="bImp" accept=".json,application/json" class="hide"></label>
+      <span class="hint" id="bMsg"></span>
+    </div>
+  </section>
 </div>
 <dialog id="confirmDlg" aria-labelledby="confirmMsg">
   <p id="confirmMsg">정말 삭제하시겠습니까?</p>
@@ -1184,7 +1193,7 @@ function ask(sub,onOk,y,opt){
   $("dlgOk").textContent=opt.ok||"삭제";$("dlgOk").className=opt.ok?"dlgcancel":"dlgdel";
   $("dlgInputBox").classList.toggle("hide",!opt.input);
   if(opt.input){inp.value=opt.input.value||"";inp.onkeydown=ev=>{if(ev.key==="Enter"){ev.preventDefault();$("dlgOk").click();}};}
-  if(typeof y==="number"){d.style.inset=`${Math.max(12,y-90)}px 0 auto 0`;d.style.margin="0 auto";}else{d.style.inset="";d.style.margin="";}
+  if(typeof y==="number"){d.style.inset=`${Math.max(12,Math.min(y-90,window.innerHeight-240))}px 0 auto 0`;d.style.margin="0 auto";}else{d.style.inset="";d.style.margin="";}
   const close=ok=>{
     if(ok&&opt.input){const v=inp.value.trim(),err=opt.input.validate?opt.input.validate(v):(v?"":"이름을 넣어 주세요.");if(err){$("dlgErr").textContent=err;inp.focus();return;}
       d.close();$("dlgOk").onclick=$("dlgCancel").onclick=null;onOk(v);return;}
@@ -1294,6 +1303,27 @@ $("jDel").addEventListener("click",e=>{const id=$("jobList").value;if(!id){$("jM
   const s=saved.find(x=>x.id===id);
   ask(`'${s?s.name:""}' 작업을 지웁니다. 지금 화면 내용은 그대로 남습니다.`,()=>{saved=saved.filter(x=>x.id!==id);if(currentId===id)currentId=null;persistSaved();renderJobs();markClean();$("jMsg").textContent="삭제했습니다.";},e.clientY);});
 
+
+/* ---------- 백업 (내보내기 / 불러오기 = 덮어쓰기) ---------- */
+$("bExp").addEventListener("click",()=>{
+  const cost={};COST_IDS.forEach(k=>cost[k]=$(k).value);cost.concave=$("concave").checked;
+  const blob=new Blob([JSON.stringify({kind:"fabric-calc-backup",version:1,matLib,saved,cost},null,1)],{type:"application/json"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="넓이계산기-백업.json";document.body.appendChild(a);a.click();
+  setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500);$("bMsg").textContent="내보냈습니다.";
+});
+$("bImp").addEventListener("change",async e=>{const f=e.target.files[0];e.target.value="";if(!f)return;
+  let d;try{d=JSON.parse(await f.text());if(d.kind!=="fabric-calc-backup"||!Array.isArray(d.matLib)||!Array.isArray(d.saved))throw 0;}
+  catch(err){$("bMsg").textContent="이 계산기에서 내보낸 파일이 아닙니다.";return;}
+  ask(`부자재 ${d.matLib.length}개, 저장한 작업 ${d.saved.length}개로 바뀝니다. 이 브라우저에 있던 목록과 작업은 지워집니다.`,()=>{
+    matLib=d.matLib.filter(m=>m&&m.id&&m.name);saveMatLib();editMat=null;
+    saved=d.saved.filter(s=>s&&s.id&&s.state);if(!saved.some(s=>s.id===currentId))currentId=null;persistSaved();
+    if(d.cost){COST_IDS.forEach(k=>{if(d.cost[k]!==undefined&&$(k))$(k).value=d.cost[k];});
+      try{const o={};COST_IDS.forEach(x=>o[x]=$(x).value);localStorage.setItem("fabric-calc-cost",JSON.stringify(o));}catch(err){}
+      if(d.cost.concave!==undefined){$("concave").checked=!!d.cost.concave;try{localStorage.setItem("fabric-calc-concave",d.cost.concave?"1":"0");}catch(err){}}}
+    loadEditor(null);renderMats();renderJobs();renderCost();schedule();markClean();
+    $("bMsg").textContent="백업 파일 내용으로 바꿨습니다.";
+  },$("bMsg").getBoundingClientRect().top,{msg:"백업 파일로 덮어쓸까요?",ok:"덮어쓰기"});
+});
 renderMats();syncBtn();renderJobs();renderCost();
 /* 처음 열 때, 고른 작업이 있으면 그 작업의 도면까지 되살림 */
 const cur=saved.find(x=>x.id===currentId);
